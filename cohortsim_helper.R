@@ -51,64 +51,61 @@ posterior_spline_matrix <- function(model, fitted_basis, newx) {
   return(final_result)
 }
 
-run_multi_cohort_parallel <- function(
-  start_ages,
-  final_tp_ctrl,
-  final_tp_trt,
-  n_cycles,
-  utilities,
-  cost_ctrl,
-  cost_trt
-) {
-  final_tp_ctrl <<- final_tp_ctrl
-  final_tp_trt <<- final_tp_trt
+sim_true_cohort <- function(control_type, treatment_type) {
+  age_grid <- 40:80
+  limited_probs <- uniform_probs(age_grid)
+  extra_probs <- half_normal_probs(age_grid, sd = 5)
+  combined_probs <- c(0.6 * limited_probs[1:21], 0.4 * extra_probs[22:41])
 
-  print("done super assignment")
+  true_cohort <- target_prob_vector(control_type, treatment_type, max_age = 120)
+  true_cohort_ctrl <- matrix(true_cohort$control, nrow = 1)
+  true_cohort_trt <- matrix(true_cohort$treatment, nrow = 1)
 
-  cl <- makeCluster(5)
+  utilities <- c(utility_healthy, utility_diseased, 0)
+  cost_ctrl <- c(cost_healthy, cost_diseased, 0)
+  cost_trt <- c(cost_healthy + treatment_cost_per_cycle, cost_diseased, 0)
 
-  # Exporting all necessary variables and functions to the cluster
+  ncores <- 32
+  cl <- makeCluster(ncores, type = "SOCK")
   clusterExport(
     cl,
-    c(
-      "cohort_state_transition",
-      "n_cycles",
-      "utilities",
-      "compute_delta",
-      "cost_ctrl",
-      "cost_trt",
-      "extended_age_grid",
-      "n_target"
-    )
+    c("cohort_state_transition", "n_cycles", "n_target", "compute_delta")
   )
-
-  multi_cohort_stm <- parLapply(cl, start_ages, function(start_age) {
-    cohort_list <- list()
-    age_idx_range <- which(
+  start_ages <- 40:80
+  extended_age_grid <- 40:120
+  res_true_cohort_list <- parLapply(cl, start_ages, function(start_age) {
+    age_idx_range = which(
       extended_age_grid >= start_age & extended_age_grid < (start_age + 40)
     )
-    print("done calculate idx")
-    for (i in 1:nrow(final_tp_ctrl)) {
-      ctrl_probs <- final_tp_ctrl[i, ]
-      trt_probs <- final_tp_trt[i, ]
-      cohort_list[[i]] <- cohort_state_transition(
-        ctrl_probs,
-        trt_probs,
-        utilities = utilities,
-        time_horizon = n_cycles,
-        cost_ctrl = cost_ctrl,
-        cost_trt = cost_trt,
-        age_idx_range = age_idx_range
-      )
-    }
-
-    return(cohort_list)
+    cohort_state_transition(
+      true_cohort_ctrl,
+      true_cohort_trt,
+      utilities,
+      cost_ctrl,
+      cost_trt,
+      n_cycles,
+      age_idx_range
+    )
   })
 
   stopCluster(cl)
 
-  return(multi_cohort_stm)
+  cohort_true_collapsed <- bind_rows(res_true_cohort_list)
+  res_true_cohort <- cohort_true_collapsed %>%
+    summarise(
+      delta_QALYs = weighted.mean(
+        cohort_true_collapsed$delta_QALYs,
+        combined_probs
+      ),
+      delta_costs = weighted.mean(
+        cohort_true_collapsed$delta_costs,
+        combined_probs
+      )
+    )
+
+  return(list(res_true_cohort = res_true_cohort, target_prop = combined_probs))
 }
+
 
 run_multi_cohort_sequential <- function(
   start_ages,
@@ -251,110 +248,6 @@ aggregate_weights <- function(true_weights, starting_ages) {
   return(aggregated_weights)
 }
 
-read_file_avg <- function(file_names, scenario_name, n_target, weights) {
-  # Find the index of the file name that contains the scenario name
-  file_index <- grep(scenario_name, file_names)
-
-  # Read the file
-  dt <- readRDS(file_names[[file_index]])
-
-  dt_collapsed <- multi_cohort_average(dt, weights)
-
-  # Calculate the averages and store them in a list
-  avg_list <- lapply(dt_collapsed, function(method_result) {
-    lapply(method_result, function(y) y / n_target)
-  })
-
-  dt_collapsed <- map(avg_list, bind_rows)
-
-  # Return the averages
-  return(dt_collapsed)
-}
-
-import_plots <- function(plots_names, scenario_name) {
-  # Detect the plots based on the scenario_name and model_name
-  get_y_limits <- function(plot) {
-    data_list <- ggplot_build(plot)$data
-    y_range_list <- lapply(data_list, function(layer_data) {
-      range(layer_data$y, na.rm = TRUE)
-    })
-    do.call("range", y_range_list)
-  }
-
-  linear_plots <- plots_names[str_detect(
-    plots_names,
-    paste0(scenario_name, ".*", "linear")
-  )] %>%
-    readRDS(.)
-  unrestricted_spline_plots <- plots_names[str_detect(
-    plots_names,
-    paste0(scenario_name, ".*", "unrestricted_spline")
-  )] %>%
-    readRDS(.)
-  mono_spline_plots <- plots_names[str_detect(
-    plots_names,
-    paste0(scenario_name, ".*(?<!unrestricted_)spline")
-  )] %>%
-    readRDS(.)
-  adjusted_plots <- plots_names[str_detect(
-    plots_names,
-    paste0(scenario_name, ".*", "adjusted")
-  )] %>%
-    readRDS(.)
-  # Assuming selected_plots is a data frame, extract the outcomes and effects
-
-  # Combine y-limits to find the global range
-  all_y_limits <- c(
-    sapply(linear_plots, get_y_limits),
-    sapply(unrestricted_spline_plots, get_y_limits),
-    sapply(mono_spline_plots, get_y_limits),
-    sapply(adjusted_plots, get_y_limits)
-  )
-
-  y_max <- max(all_y_limits, na.rm = TRUE) + 0.2
-  y_min <- min(all_y_limits, na.rm = TRUE)
-  y_min <- ifelse(y_min - 0.2 < 0, 0, y_min - 0.2)
-
-  global_y_range <- c(y_min, y_max)
-
-  # Function to set the global y-axis limits
-  set_global_ylimits <- function(plot) {
-    plot + scale_y_continuous(limits = global_y_range)
-  }
-  # Apply the new y-axis limits to all plots
-  linear_plots <- lapply(linear_plots, set_global_ylimits)
-  unrestricted_spline_plots <- lapply(
-    unrestricted_spline_plots,
-    set_global_ylimits
-  )
-  mono_spline_plots <- lapply(mono_spline_plots, set_global_ylimits)
-  adjusted_plots <- lapply(adjusted_plots, set_global_ylimits)
-
-  outcome_plots <- ggarrange(
-    plotlist = c(
-      adjusted_plots,
-      linear_plots,
-      unrestricted_spline_plots,
-      mono_spline_plots
-    ),
-    nrow = 4,
-    ncol = 2,
-    common.legend = TRUE,
-    legend = "bottom"
-  )
-  outcome_title <- paste0(
-    "outcome surface under limited/extended data",
-    "\n",
-    "Method from top to bottom: adjusted regressions,linear interaction, unrestricted spline, monotonic spline"
-  )
-
-  outcome_plots <- annotate_figure(
-    outcome_plots,
-    top = text_grob(outcome_title, hjust = 0, x = 0, face = "bold")
-  )
-
-  return(list(outcome_plots = outcome_plots))
-}
 
 compute_delta <- function(trace_ctrl, trace_trt, payoff_ctrl, payoff_trt) {
   # Initialize discount rate and vector
@@ -371,46 +264,4 @@ compute_delta <- function(trace_ctrl, trace_trt, payoff_ctrl, payoff_trt) {
 
 extract_plot_data <- function(plot_list) {
   plot_list$plot$data
-}
-
-plot_INMB_multi <- function(method_list, res_true, k) {
-  # Calculate INMB for each data frame in the list
-  res_INMB <- lapply(names(method_list), function(method_name) {
-    df <- method_list[[method_name]]
-    INMB <- k * df$delta_QALYs - df$delta_costs
-    INMB_true <- k * res_true$delta_QALYs - res_true$delta_costs
-    data.frame(
-      method = clean_method_names(method_name),
-      scenarios = ifelse(grepl("_ex", method_name), "Extended", "Limited"),
-      INMB = INMB,
-      INMB_true = INMB_true
-    )
-  })
-
-  # Bind the data frames together
-  df_combined <- bind_rows(res_INMB)
-
-  # Create the plot
-  plot <- df_combined %>%
-    ggplot(aes(y = method, x = INMB, fill = method)) +
-    stat_slab() +
-    geom_vline(xintercept = df_combined$INMB_true, linetype = "dashed") +
-    stat_pointinterval(alpha = 0.6) +
-    scale_fill_brewer(palette = "Set2") +
-    labs(
-      title = paste0("Incremental Net Monetary Benefit, k = ", k),
-      ylab = "Method",
-    ) +
-    facet_grid(
-      scenarios ~ .,
-      scales = "free_y",
-      space = "free_y",
-      as.table = FALSE
-    ) +
-    theme(
-      plot.title = element_text(face = "bold"), # Bold title
-      axis.text.y = element_text(face = "bold") # Bold y-axis labels
-    )
-
-  return(plot)
 }
