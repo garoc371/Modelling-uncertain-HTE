@@ -8,14 +8,14 @@ library(doParallel)
 library(doSNOW)
 library(tidyr)
 library(dplyr)
+library(here)
 
-source("microsim_helper.R")
-source("cmdstan_fit_plot.R")
-source("gen_surface.R")
+source(here("microsim_helper.R"))
+source(here("cmdstan_fit_plot.R"))
+source(here("gen_surface.R"))
 
-source("Rcpp_stm.R")
-source("sim_multi_cohort.R")
-source("cohortsim_helper.R")
+source(here("sim_multi_cohort.R"))
+source(here("cohortsim_helper.R"))
 
 # Generate outcome surfaces for all scenarios
 n_trial <- 500
@@ -85,10 +85,6 @@ mod_sep_dir <- cmdstan_model(sep_file)
 n_rep <- 1000
 
 
-# Define the target directory
-target_directory <- "MC_sim/results/unrestricted_spline/"
-
-
 # Add short versions to the combinations data frame
 combinations <- combinations %>%
   mutate(
@@ -122,32 +118,34 @@ for (i in 1:nrow(combinations)) {
     "non",
     gsub("linear", "lin", as.character(treatment_type))
   )
-  pop_path <- paste0(
-    "MC_sim/pop_data/",
-    control_short,
-    "_ctrl_",
-    treatment_short,
-    "_trt",
-    sep = ""
+  pop_path <- here(
+    "pop_data",
+    paste0(
+      control_short,
+      "_ctrl_",
+      treatment_short,
+      "_trt"
+    )
   )
-  plot_path <- paste0(
-    "MC_sim/plots/",
-    control_short,
-    "_ctrl_",
-    treatment_short,
-    "_trt",
-    sep = ""
+  plot_path <- here(
+    "figures",
+    paste0(
+      control_short,
+      "_ctrl_",
+      treatment_short,
+      "_trt"
+    )
   )
-  res_true_path <- paste0(
-    "MC_sim/results/true/",
-    control_short,
-    "_ctrl_",
-    treatment_short,
-    "_trt",
-    sep = ""
+  res_true_path <- here(
+    "results",
+    "true",
+    paste0(
+      control_short,
+      "_ctrl_",
+      treatment_short,
+      "_trt"
+    )
   )
-
-  # microsim_true <- sim_true_microsim(control_type, treatment_type)
 
   cohort_true <- sim_true_cohort(control_type, treatment_type)
   true_weights <- cohort_true$target_prop
@@ -156,7 +154,6 @@ for (i in 1:nrow(combinations)) {
     cohort_true$res_true_cohort,
     paste0(res_true_path, "_cohort_true.RDs")
   )
-  # saveRDS(microsim_true, paste0(res_name, "_res_true.RDs"))
 
   # call sim_cohort to simulate cohort model for all scenarios
   start_ages <- list(
@@ -165,8 +162,8 @@ for (i in 1:nrow(combinations)) {
 
   true_weights_g5 <- aggregate_weights(true_weights, start_ages[[1]])
 
-  trial_data <- readRDS(paste0(pop_path, "/trial_data.RDs"))
-  trial_data_extra <- readRDS(paste0(pop_path, "/trial_data_extra.RDs"))
+  trial_data <- readRDS(file.path(pop_path, "trial_data.RDs"))
+  trial_data_extra <- readRDS(file.path(pop_path, "trial_data_extra.RDs"))
 
   target_probs_treatment <- generate_probabilities(
     age_target,
@@ -186,45 +183,55 @@ for (i in 1:nrow(combinations)) {
       n_rep
     )
 
-  unadjusted_path <- paste0(
-    "MC_sim/results/unadjusted/",
-    control_short,
-    "_ctrl_",
-    treatment_short,
-    "_trt",
-    sep = ""
+  unadjusted_path <- here(
+    "results",
+    "unadjusted",
+    paste0(
+      control_short,
+      "_ctrl_",
+      treatment_short,
+      "_trt"
+    )
   )
-  adjusted_path <- paste0(
-    "MC_sim/results/adjusted/",
-    control_short,
-    "_ctrl_",
-    treatment_short,
-    "_trt",
-    sep = ""
+  adjusted_path <- here(
+    "results",
+    "adjusted",
+    paste0(
+      control_short,
+      "_ctrl_",
+      treatment_short,
+      "_trt"
+    )
   )
-  linear_path <- paste0(
-    "MC_sim/results/linear_interaction/",
-    control_short,
-    "_ctrl_",
-    treatment_short,
-    "_trt",
-    sep = ""
+  linear_path <- here(
+    "results",
+    "linear_interaction",
+    paste0(
+      control_short,
+      "_ctrl_",
+      treatment_short,
+      "_trt"
+    )
   )
-  unres_spline_path <- paste0(
-    "MC_sim/results/unrestricted_spline/",
-    control_short,
-    "_ctrl_",
-    treatment_short,
-    "_trt",
-    sep = ""
+  unres_spline_path <- here(
+    "results",
+    "unrestricted_spline",
+    paste0(
+      control_short,
+      "_ctrl_",
+      treatment_short,
+      "_trt"
+    )
   )
-  mon_spline_path <- paste0(
-    "MC_sim/results/monotonic_spline/",
-    control_short,
-    "_ctrl_",
-    treatment_short,
-    "_trt",
-    sep = ""
+  mon_spline_path <- here(
+    "results",
+    "monotonic_spline",
+    paste0(
+      control_short,
+      "_ctrl_",
+      treatment_short,
+      "_trt"
+    )
   )
 
   ncores <- 32
