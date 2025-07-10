@@ -1,3 +1,5 @@
-.DS_store
-.sh
-.zip
+*.DS_store
+*.sh
+*.zip
+*.Rhistory
+.local/
