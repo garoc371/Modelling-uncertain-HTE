@@ -80,15 +80,17 @@ for (i in 1:nrow(combinations)) {
     "non",
     gsub("linear", "lin", as.character(treatment_type))
   )
-  pop_path <- paste0(
-    "pop_data/",
-    control_short,
-    "_ctrl_",
-    treatment_short,
-    "_trt",
-    sep = ""
+  pop_path <- here(
+    "pop_data",
+    paste0(
+      control_short,
+      "_ctrl_",
+      treatment_short,
+      "_trt",
+      sep = ""
+    )
   )
-  dir.create(pop_path, showWarnings = F)
+  dir.create(pop_path, recursive = TRUE, showWarnings = FALSE)
 
   probs_control <- plogis(control_outcome_logit(
     baseline_probs,
