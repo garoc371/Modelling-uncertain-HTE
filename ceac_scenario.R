@@ -4,8 +4,8 @@ library(patchwork)
 library(ggpubr)
 library(here)
 # library(Rcpp)
-source(here("cohortsim_helper.R"))
-source(here("microsim_helper.R"))
+source(here("simulation_functions.R"))
+source(here("analysis_functions.R"))
 library(ggdist)
 library(reshape2)
 
@@ -28,29 +28,7 @@ wtp <- seq(0, 30000, by = 1000)
 
 start_ages <- c(40, 50, 60, 70, 80)
 
-# function to calculate INMB for each MC replication
-
-compute_INMB <- function(sublist, wtp) {
-  INMB = (wtp * sublist$delta_QALYs - sublist$delta_costs) / n_target
-
-  return(INMB)
-}
-
-pp_approval <- function(filepath, scenario, wtp) {
-  dat <- readRDS(paste0(filepath, scenario, ".RDs"))
-  INMB_list <- map(dat, ~ compute_INMB(., wtp))
-
-  pp_list <- map(INMB_list, ~ mean(.x > 0))
-  avg_pp <- mean(unlist(pp_list))
-
-  return(avg_pp = avg_pp)
-}
-
-model_scenario_pp <- function(scenario_name, model_type, suffix, wtp) {
-  path <- file.path(here("results", model_type), scenario_name)
-  return(pp_approval(path, suffix, wtp)) # pass wtp
-}
-
+# Functions moved to analysis_functions.R
 
 combinations <- expand.grid(
   control_type = c(
@@ -228,7 +206,12 @@ ggplot(ceac_data_limited, aes(x = wtp, y = probability)) +
   theme_bw() +
   guides(color = guide_legend(title = "Model Type"))
 
-ggsave(here("figures", "ceac_all_limited.png"), height = 12, width = 9)
+ggsave(
+  here("figures", "ceac_all_limited.png"),
+  height = 12,
+  width = 9,
+  dpi = 600
+)
 
 ggplot(ceac_data_extended, aes(x = wtp, y = probability)) +
   geom_line(aes(color = model)) +

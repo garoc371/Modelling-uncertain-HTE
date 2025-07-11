@@ -10,12 +10,8 @@ library(tidyr)
 library(dplyr)
 library(here)
 
-source(here("microsim_helper.R"))
-source(here("cmdstan_fit_plot.R"))
-source(here("gen_surface.R"))
-
-source(here("sim_multi_cohort.R"))
-source(here("cohortsim_helper.R"))
+source(here("data_generation.R"))
+source(here("simulation_functions.R"))
 
 # Generate outcome surfaces for all scenarios
 n_trial <- 500
@@ -74,8 +70,8 @@ combinations <- expand.grid(
   )
 )
 
-# Iterate through the combinations
-
+# put the stan files in the cmdstan path
+# for pre-compilation
 rw_file <- file.path(cmdstan_path(), "rw_spline.stan")
 mod_sep_rw <- cmdstan_model(rw_file)
 
@@ -409,6 +405,5 @@ for (i in 1:nrow(combinations)) {
     monotonic_spline_results
   )
   gc()
-
-  stopCluster(cl)
 }
+stopCluster(cl)

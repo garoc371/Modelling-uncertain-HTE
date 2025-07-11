@@ -10,8 +10,7 @@ library(Cairo)
 library(tidyverse)
 library(ggdist)
 library(patchwork)
-source(here("cohortsim_helper.R"))
-source(here("microsim_helper.R"))
+source(here("simulation_functions.R"))
 
 # relevant parameters
 n_target <- 2e4
