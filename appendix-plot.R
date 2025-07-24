@@ -19,31 +19,31 @@ start_age <- seq(40, 80, by = 10)
 # read in files
 pop_weights <- readRDS(paste0(
   "appendix_data/",
-  list.files(here("data"), pattern = "*weights")
+  list.files(here("appendix_data"), pattern = "*weights")
 ))
 cohort_true <- readRDS(paste0(
   "appendix_data/",
-  list.files(here("data"), pattern = "*cohort_true")
+  list.files(here("appendix_data"), pattern = "*cohort_true")
 ))
 res_g5 <- readRDS(paste0(
   "appendix_data/",
-  list.files(here("data"), pattern = "*cohort_all")
+  list.files(here("appendix_data"), pattern = "*cohort_all")
 ))
 linear_plots <- readRDS(paste0(
   "appendix_data/",
-  list.files(here("data"), pattern = "*linear")
+  list.files(here("appendix_data"), pattern = "*linear")
 ))
 adjusted_plots <- readRDS(paste0(
   "appendix_data/",
-  list.files(here("data"), pattern = "*adjusted")
+  list.files(here("appendix_data"), pattern = "*adjusted")
 ))
 unrestricted_splines <- readRDS(paste0(
   "appendix_data/",
-  list.files(here("data"), pattern = "*unrestricted_spline")
+  list.files(here("appendix_data"), pattern = "*unrestricted_spline")
 ))
 monotonic_splines <- readRDS(paste0(
   "appendix_data/",
-  list.files(here("data"), "monotonic_spline")
+  list.files(here("appendix_data"), "monotonic_spline")
 ))
 
 
@@ -84,8 +84,8 @@ set_global_ylimits <- function(plot) {
 scenario_cohort <- c(
   "unadjusted_limited",
   "unadjusted_extended",
-  "standard_limited",
-  "standard_extended",
+  "adjusted_limited",
+  "adjusted_extended",
   "linear_limited",
   "linear_extended",
   "unrestricted_spline_limited",
@@ -123,10 +123,29 @@ for (j in 1:length(scenario_cohort)) {
     ggtitle(scenario_cohort[[j]])
 }
 
+# CE_g5_plots <- ggarrange(
+#   plotlist = CE_g5_list,
+#   nrow = 5,
+#   ncol = 2,
+#   common.legend = T,
+#   legend = "bottom"
+# )
+
 CE_g5_plots <- ggarrange(
-  plotlist = CE_g5_list,
-  nrow = 5,
-  ncol = 2,
+  plotlist = list(
+    CE_g5_list[[1]],
+    CE_g5_list[[3]],
+    CE_g5_list[[5]],
+    CE_g5_list[[7]],
+    CE_g5_list[[9]],
+    CE_g5_list[[2]],
+    CE_g5_list[[4]],
+    CE_g5_list[[6]],
+    CE_g5_list[[8]],
+    CE_g5_list[[10]]
+  ),
+  nrow = 2,
+  ncol = 5,
   common.legend = T,
   legend = "bottom"
 )
@@ -164,18 +183,37 @@ unrestricted_splines <- lapply(
 monotonic_splines <- lapply(monotonic_splines, set_global_ylimits)
 adjusted_plots <- lapply(adjusted_plots, set_global_ylimits)
 
+# outcome_plots <- ggarrange(
+#   plotlist = c(
+#     adjusted_plots,
+#     linear_plots,
+#     unrestricted_splines,
+#     monotonic_splines
+#   ),
+#   nrow = 4,
+#   ncol = 2,
+#   common.legend = TRUE,
+#   legend = "bottom"
+# )
+
 outcome_plots <- ggarrange(
-  plotlist = c(
-    adjusted_plots,
-    linear_plots,
-    unrestricted_splines,
-    monotonic_splines
+  plotlist = list(
+    adjusted_plots[[1]],
+    linear_plots[[1]],
+    unrestricted_splines[[1]],
+    monotonic_splines[[1]],
+    adjusted_plots[[2]],
+    linear_plots[[2]],
+    unrestricted_splines[[2]],
+    monotonic_splines[[2]]
   ),
-  nrow = 4,
-  ncol = 2,
+  nrow = 2,
+  ncol = 4,
   common.legend = TRUE,
   legend = "bottom"
 )
+
+
 outcome_title <- paste0(
   "Outcome surface under limited/extended data",
   "\n",
@@ -187,12 +225,12 @@ outcome_plots <- annotate_figure(
   top = text_grob(outcome_title, hjust = 0, x = 0, face = "bold")
 )
 
-CE_g5_plots | outcome_plots
+CE_g5_plots / outcome_plots
 ggsave(
-  "figures/CE_outcome_plots.png",
-  width = 40,
-  height = 30,
+  "figures/CE_outcome_plots2.png",
+  width = 35,
+  height = 42,
   units = "cm",
   dpi = 600
 )
-# for vertical plots, simply adjust the layout in `ggarrange` call
+# for side-by-side plots, simply adjust the layout in `ggarrange` call as shown in comments above
