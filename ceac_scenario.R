@@ -204,6 +204,7 @@ ggplot(ceac_data_limited, aes(x = wtp, y = probability)) +
     title = "Cost-Effectiveness Acceptability Curves"
   ) +
   theme_bw() +
+  theme(legend.position = "bottom") +
   guides(color = guide_legend(title = "Model Type"))
 
 ggsave(
@@ -231,6 +232,7 @@ ggplot(ceac_data_extended, aes(x = wtp, y = probability)) +
     title = "Cost-Effectiveness Acceptability Curves"
   ) +
   theme_bw() +
+  theme(legend.position = "bottom") +
   guides(color = guide_legend(title = "Model Type"))
 ggsave(
   here("figures", "ceac_all_extended.png"),

@@ -1,6 +1,6 @@
 # Heterogeneous Treatment Effects Simulation Study
 
-This repository contains R code for reproducing the main simulation study and analysis for the manuscript **Modelling uncertain heterogeneous treatment effects for decision analytical models: An early exploration**
+This repository contains R code for reproducing the main simulation study and analysis for the manuscript **Incorporating Heterogeneity in Population-Decision Models: An Early Exploration**
 
 ## File Structure
 
